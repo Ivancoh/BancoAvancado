@@ -1,0 +1,200 @@
+/* 
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+/**
+ * Author:  matheus.lessing
+ * Created: 06/09/2019
+ */
+DROP DATABASE emprestimos;
+CREATE DATABASE emprestimos;
+
+use emprestimos;
+
+CREATE TABLE clientes (
+    idcliente integer NOT NULL AUTO_INCREMENT,
+    nome character varying(100) NOT NULL,
+    cpf character(14),
+    PRIMARY KEY (idcliente)
+);
+-- 
+INSERT INTO clientes VALUES (1, 'Luiz Oliveira da Silva', '352.732.750-91');
+INSERT INTO clientes VALUES (2, 'Cirio Luiz Oliveira da Silva', '352.732.550-91');
+INSERT INTO clientes VALUES (3, 'Oliveira da Silva', '352.732.650-91');
+INSERT INTO clientes VALUES (4, 'da Silva', '352.732.450-91');
+-- 
+-- 
+CREATE TABLE contratos (
+    idcontrato integer NOT NULL AUTO_INCREMENT,
+    fk_contrato_idcliente integer,
+    valor integer,
+    numparcelas integer,
+    numparcelaspagas integer,
+    contratacao character varying(10),
+    quitacao boolean NOT NULL,
+    PRIMARY KEY (idcontrato),
+    FOREIGN KEY (fk_contrato_idcliente) REFERENCES clientes(idcliente)
+
+);
+-- 
+INSERT INTO contratos VALUES (1, 1, 1000, 6,0,'04/02/2016', false);
+INSERT INTO contratos VALUES (2, 2, 2000, 6,0,'04/02/2016', false);
+INSERT INTO contratos VALUES (3, 3, 3000, 6,0,'04/02/2016', false);
+INSERT INTO contratos VALUES (4, 4, 4000, 6,0,'04/02/2016', false);
+-- 
+CREATE TABLE parcelas (
+    idparcela integer NOT NULL,
+    fk_parcelas_idcontrato integer NOT NULL,
+    valor integer,
+    numparcela integer,
+    quitacao boolean NOT NULL,
+    dataquitacao character varying(10),
+    vencimento character varying(11),
+    PRIMARY KEY (idparcela),
+    FOREIGN KEY (fk_parcelas_idcontrato) REFERENCES contratos(idcontrato)
+);
+-- 
+INSERT INTO parcelas VALUES (1, 1, 363, 1,false, '','04/02/2016');
+INSERT INTO parcelas VALUES (2, 1, 363, 2,false, '','04/03/2016');
+INSERT INTO parcelas VALUES (3, 1, 363, 3,false, '','04/04/2016');
+INSERT INTO parcelas VALUES (4, 1, 363, 4,false, '','04/05/2016');
+INSERT INTO parcelas VALUES (5, 1, 363, 5,false, '','04/06/2016');
+INSERT INTO parcelas VALUES (6, 1, 363, 6,false, '','04/07/2016');
+-- 
+INSERT INTO parcelas VALUES (7, 2, 700, 1,false, '','04/02/2016');
+INSERT INTO parcelas VALUES (8, 2, 700, 2,false, '','04/03/2016');
+INSERT INTO parcelas VALUES (9, 2, 700, 3,false, '','04/04/2016');
+INSERT INTO parcelas VALUES (10, 2, 700, 4,false, '','04/05/2016');
+INSERT INTO parcelas VALUES (11, 2, 700, 5,false, '','04/06/2016');
+INSERT INTO parcelas VALUES (12, 2, 700, 6,false, '','04/07/2016');
+-- 
+INSERT INTO parcelas VALUES (13, 3, 1100, 1,false, '','04/02/2016');
+INSERT INTO parcelas VALUES (14, 3, 1100, 2,false, '','04/03/2016');
+INSERT INTO parcelas VALUES (15, 3, 1100, 3,false, '','04/04/2016');
+INSERT INTO parcelas VALUES (16, 3, 1100, 4,false, '','04/05/2016');
+INSERT INTO parcelas VALUES (17, 3, 1100, 5,false, '','04/06/2016');
+INSERT INTO parcelas VALUES (18, 3, 1100, 6,false, '','04/07/2016');
+-- 
+INSERT INTO parcelas VALUES (19, 4, 2000, 1,false, '','04/02/2016');
+INSERT INTO parcelas VALUES (20, 4, 2000, 2,false, '','04/03/2016');
+INSERT INTO parcelas VALUES (21, 4, 2000, 3,false, '','04/04/2016');
+INSERT INTO parcelas VALUES (22, 4, 2000, 4,false, '','04/05/2016');
+INSERT INTO parcelas VALUES (23, 4, 2000, 5,false, '','04/06/2016');
+INSERT INTO parcelas VALUES (24, 4, 2000, 6,false, '','04/07/2016');
+
+
+
+CREATE VIEW parcelas_pagas AS
+SELECT idparcela,
+       numparcela,
+       quitacao,
+       vencimento
+FROM parcelas where quitacao = 1;
+
+-- select * from parcelas_pagas;
+
+-- 
+-- 
+CREATE VIEW cliente_contrato AS
+SELECT nome AS Nome,
+       cpf,
+       valor,
+       numparcelas,
+       quitacao
+FROM contratos
+INNER JOIN  clientes on clientes.idcliente = contratos.fk_contrato_idcliente;
+
+-- select * from cliente_contrato;
+-- 
+-- 
+CREATE OR REPLACE VIEW cliente_contrato_pagas AS
+SELECT nome AS Nome,
+       cpf,
+       valor,
+       (SELECT COUNT * FROM parcelas WHERE parcelas.fk_parcelas_idcontrato = contratos.idcontrato and parcelas.quitacao = true)as Quitadas,
+       numparcelas,
+       quitacao
+FROM contratos
+INNER JOIN  clientes on clientes.idcliente = contratos.fk_contrato_idcliente;
+
+-- select * from cliente_contrato_pagas;
+
+
+
+DELIMITER //
+CREATE PROCEDURE GetAllClientes()
+   BEGIN
+   SELECT *  FROM clientes;
+   END //
+DELIMITER ;
+
+-- CALL GetAllClientes();
+
+DELIMITER //
+CREATE PROCEDURE dinheiroAreceber()
+   BEGIN
+    SELECT SUM(valor)
+FROM parcelas
+WHERE quitacao = 0;
+   END //
+DELIMITER ;
+
+-- CALL dinheiroAreceber();
+
+
+-- DELIMITER $$
+-- CREATE DEFINER = CURRENT_USER TRIGGER nome_do_trigger BEFORE INSERT ON nome_da_tabela
+--  FOR EACH ROW BEGIN
+--   INSERT INTO nome_da_tabela SET nome = NEW.nome;
+--  END$$
+-- DELIMITER ;
+
+
+delimiter |
+
+CREATE TRIGGER adiocionarCliente AFTER INSERT ON clientes
+  FOR EACH ROW
+  BEGIN
+    DECLARE idcliente  CHAR(80);
+--     INSERT INTO contratos VALUES (fk_contrato_idcliente = NEW.idcliente);
+        INSERT INTO contratos
+            SET  fk_contrato_idcliente =  NEW.idcliente,
+                valor = 0,
+                numparcelas = 0,
+                contratacao = "",
+                quitacao = false;
+  END;
+|
+
+delimiter ;
+
+-- DROP TRIGGER adiocionarCliente;
+
+INSERT INTO clientes (idcliente,nome, cpf) VALUES (99,'Ivan Hoffmann', '888.385.350-80');
+
+select * from clientes;
+
+select * from contratos;
+
+
+delimiter |
+
+CREATE TRIGGER adiocionarCliente AFTER UPDATE ON parcelas
+  FOR EACH ROW
+  BEGIN
+    DECLARE var_parcelas_idcontrato  CHAR(80);
+        SELECT COUNT idparcela FROM parcelas WHERE parcelas.fk_parcelas_idcontrato = fk_parcelas_idcontrato and parcelas.quitacao = true as Quitadas;
+            UPDATE contratos
+            SET numparcelaspagas = Quitadas
+            WHERE contratos.idcontrato = var_parcelas_idcontrato;
+  END;
+|
+
+delimiter ;
+
+UPDATE parcelas
+SET quitacao = true
+WHERE idparcela = 19;
+
+select * from contratos;
